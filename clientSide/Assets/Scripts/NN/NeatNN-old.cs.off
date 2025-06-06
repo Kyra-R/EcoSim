@@ -1,0 +1,399 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class NeatNN : MonoBehaviour
+{
+
+    private Dictionary<int, Neuron> Neurons = new Dictionary<int, Neuron>();
+    private List<Connection> Connections = new List<Connection>();
+
+    //private List<Neuron> inputNeurons = new List<Neuron>();
+    //private List<Neuron> outputNeurons = new List<Neuron>();
+
+    private int[] inputIds = new int[8];
+    private int[] outputIds = new int[5];
+
+    private static int nextNodeId = 0;
+
+    private static System.Random rand = new System.Random();
+
+    public enum NodeType
+    {
+        Input,
+        Hidden,
+        Output
+    }
+
+
+public class Connection
+{
+    public int From;              // ID нейрона-источника
+    public int To;                // ID нейрона-получателя
+    public float Weight;          // Вес связи
+    public bool Enabled;          // Включена ли связь
+    public int Innovation;        // Уникальный номер инновации
+
+    public Connection(int from, int to, float weight, bool enabled, int innovation)
+    {
+        From = from;
+        To = to;
+        Weight = weight;
+        Enabled = enabled;
+        Innovation = innovation;
+    }
+
+    public Connection Clone()
+    {
+        return new Connection(From, To, Weight, Enabled, Innovation);
+    }
+}
+
+    public class Neuron
+    {
+        public int Id;
+        public NodeType Type;
+        public float Value = 0.0f;
+
+        public float Bias = 0.0f;
+
+        public Neuron(int id, NodeType type)
+        {
+            Id = id;
+            Type = type;
+        }
+    }
+
+    // Awake is called when the script instance is being loaded.
+    // Start is called before the first frame update.
+    // Awake gets called before Start which is why we use Awake here
+    
+    public void Awake()
+    {
+        Random.InitState((int)System.DateTime.Now.Ticks);
+
+        Neurons = new Dictionary<int, Neuron>();
+
+        Connections = new List<Connection>();
+
+        inputIds = new int[8];
+
+        outputIds = new int[5];
+
+
+        /*layers = new Layer[networkShape.Length - 1];
+
+        for(int i = 0; i < layers.Length; i++)
+        {
+            layers[i] = new Layer(networkShape[i], networkShape[i+1]);
+        }*/
+
+        //This ensures that the random numbers we generate aren't the same pattern each time. 
+    }
+
+    public void Start(){
+        Debug.Log("START NN");
+
+        InitializeBaseStructure();
+    }
+
+    public NeatNN(int inputCount, int outputCount)
+    {
+        for (int i = 0; i < inputCount; i++)
+        {
+            Neurons.Add(nextNodeId, new Neuron(nextNodeId, NodeType.Input));
+            nextNodeId++;
+        }
+
+        for (int i = 0; i < outputCount; i++)
+        {
+            Neurons.Add(nextNodeId, new Neuron(nextNodeId, NodeType.Output));
+            nextNodeId++;
+        }
+
+        // Связи между входами и выходами
+    /*    foreach (var input in GetNeuronsByType(NodeType.Input))
+        {
+            foreach (var output in GetNeuronsByType(NodeType.Output))
+            {
+                Connections.Add(new Connection(input.Id, output.Id, RandomWeight()));
+            }
+        }*/
+    }
+
+public void InitializeBaseStructure()
+{
+    //this.Connections.Clear();
+
+    //int[] inputIds = new int[8];
+    //int[] outputIds = new int[5];
+    int inputIndex = 0;
+    int outputIndex = 0;
+
+    // Входы
+    Debug.Log("START INPUTS");
+    for (int i = 0; i < 8; i++)
+    {
+        var n = new Neuron(nextNodeId++, NodeType.Input);
+        Neurons.Add(n.Id, n);
+        inputIds[i] = n.Id;
+    }
+
+
+
+    // Выходы с bias'ами
+    Debug.Log("START OUTPUTS");
+    float[] outputBiases = { 0.25f, 0.0f, 0.15f, 0.0f, 0.0f }; // WANDER ... REST
+    for (int i = 0; i < 5; i++)
+    {
+        var n = new Neuron(nextNodeId++, NodeType.Output);
+        n.Bias = outputBiases[i];
+        Neurons[n.Id] = n;
+        outputIds[i] = n.Id;
+    }
+
+    // Connections — та же логика
+    Connections.Add(new Connection(inputIds[1], outputIds[1], 1.0f));    // hunger → search food
+    Connections.Add(new Connection(inputIds[5], outputIds[1], - 0.1f));   // foodDistance → search food
+    Connections.Add(new Connection(inputIds[2], outputIds[2], 1.0f));    // thirst → search water
+    Connections.Add(new Connection(inputIds[2], outputIds[1], 0.05f));    // thirst → search food (a little)
+    Connections.Add(new Connection(inputIds[6], outputIds[2], - 0.1f));   // waterDistance → search water
+    Connections.Add(new Connection(inputIds[3], outputIds[4], 1.1f));    // fatigue → rest
+    Connections.Add(new Connection(inputIds[1], outputIds[4], -0.5f));   // hunger → rest
+    Connections.Add(new Connection(inputIds[2], outputIds[4], -0.5f));   // thirst → rest
+    Connections.Add(new Connection(inputIds[3], outputIds[3], -0.3f));   // fatigue → search mate
+    Connections.Add(new Connection(inputIds[1], outputIds[3], -0.1f));   // hunger → search mate
+    Connections.Add(new Connection(inputIds[2], outputIds[3], -0.1f));   // thirst → search mate
+    Connections.Add(new Connection(inputIds[4], outputIds[3], 1.5f));    // reproductionReadiness → search mate
+    Connections.Add(new Connection(inputIds[7], outputIds[3], -0.5f));   // populationDensity → search mate
+    Connections.Add(new Connection(inputIds[7], outputIds[0], 0.25f));    // populationDensity → wander
+
+}
+
+    public void Clone(NeatNN original)
+    {
+        Connections.Clear();
+        
+        foreach (var pair in original.Neurons)
+        {
+            this.Neurons[pair.Key] = new Neuron(pair.Value.Id, pair.Value.Type);
+        }
+
+        foreach (var conn in original.Connections)
+        {
+            this.Connections.Add(new Connection(conn.From, conn.To, conn.Weight, conn.Enabled));
+        }
+
+        //return clone;
+    }
+
+
+    public static NeatNN Crossover(NeatNN parent1, NeatNN parent2, bool isParent1Fitter)
+    {
+        NeatNN child = new NeatNN();
+        Dictionary<int, Connection> conn1 = new Dictionary<int, Connection>();
+        Dictionary<int, Connection> conn2 = new Dictionary<int, Connection>();
+
+        // Индексируем связи по innovation number
+        for (int i = 0; i < parent1.Connections.Count; i++)
+            conn1[parent1.Connections[i].Innovation] = parent1.Connections[i];
+        for (int i = 0; i < parent2.Connections.Count; i++)
+            conn2[parent2.Connections[i].Innovation] = parent2.Connections[i];
+
+        // Собираем все innovation'ы
+        HashSet<int> allInnovations = new HashSet<int>();
+        foreach (var key in conn1.Keys) allInnovations.Add(key);
+        foreach (var key in conn2.Keys) allInnovations.Add(key);
+
+        foreach (int innov in allInnovations)
+        {
+            bool has1 = conn1.ContainsKey(innov);
+            bool has2 = conn2.ContainsKey(innov);
+
+            Connection selected;
+
+            if (has1 && has2)
+            {
+                // Совпадающие: выбрать случайно
+                selected = UnityEngine.Random.value < 0.5f ? conn1[innov] : conn2[innov];
+            }
+            else
+            {
+                // Несовпадающие: брать от лучшего
+                if ((has1 && isParent1Fitter) || (has2 && !isParent1Fitter))
+                    selected = has1 ? conn1[innov] : conn2[innov];
+                else
+                    continue; // не наследуем от менее приспособленного
+            }
+
+            child.Connections.Add(selected.Clone());
+        }
+
+        // Наследуем нейроны (все, которые упоминаются в связях)
+        for (int i = 0; i < child.Connections.Count; i++)
+        {
+            int from = child.Connections[i].From;
+            int to = child.Connections[i].To;
+
+            if (!child.Neurons.ContainsKey(from))
+            {
+                Neuron neuron;
+                if (parent1.Neurons.ContainsKey(from))
+                    neuron = CloneNeuron(parent1.Neurons[from]);
+                else
+                    neuron = CloneNeuron(parent2.Neurons[from]);
+
+                child.Neurons[from] = neuron;
+            }
+
+            if (!child.Neurons.ContainsKey(to))
+            {
+                Neuron neuron;
+                if (parent1.Neurons.ContainsKey(to))
+                    neuron = CloneNeuron(parent1.Neurons[to]);
+                else
+                    neuron = CloneNeuron(parent2.Neurons[to]);
+
+                child.Neurons[to] = neuron;
+            }
+        }
+
+        return child;
+    }
+
+private static Neuron CloneNeuron(Neuron original)
+{
+    Neuron n = new Neuron(original.Id, original.Type);
+    n.Bias = original.Bias;
+    return n;
+}
+
+    public void Mutate()
+    {
+        float rand = Random.value;
+        if (rand < 0.8)
+            MutateWeights();
+        if (rand < 0.3)
+            AddConnection();
+        if (rand < 0.1)
+            AddNeuron();
+    }
+
+    void MutateWeights()
+    {
+        foreach (var conn in Connections)
+        {
+            conn.Weight += RandomWeight() * 0.5f;
+        }
+    }
+
+    void AddConnection()
+    {
+        List<Neuron> neuronList = new List<Neuron>(Neurons.Values);
+        Neuron from = neuronList[rand.Next(neuronList.Count)];
+        Neuron to = neuronList[rand.Next(neuronList.Count)];
+
+
+        if (from.Type == NodeType.Output || to.Type == NodeType.Input)
+            return;
+
+        bool exists = false;
+        for (int i = 0; i < Connections.Count; i++)
+        {
+            if (Connections[i].From == from.Id && Connections[i].To == to.Id)
+            {
+                exists = true;
+                break;
+            }
+        }
+
+        if (!exists)
+        {
+            Connections.Add(new Connection(from.Id, to.Id, RandomWeight()));
+        }
+    }
+
+
+    void AddConnection(int inputId, int outputId, float weight)
+    {
+
+    }
+
+    void AddNeuron()
+    {
+        if (Connections.Count == 0) return;
+
+        var conn = Connections[rand.Next(Connections.Count)];
+        if (!conn.Enabled) return;
+
+        conn.Enabled = false;
+
+        var newNode = new Neuron(nextNodeId++, NodeType.Hidden);
+        Neurons[newNode.Id] = newNode;
+
+        Connections.Add(new Connection(conn.From, newNode.Id, 1.0f));
+        Connections.Add(new Connection(newNode.Id, conn.To, conn.Weight));
+    }
+
+    public float[] FeedForward(float[] inputs)
+    {
+        Connection conn;
+        Neuron fromNeuron;
+        Neuron toNeuron;
+
+        foreach (var neuron in Neurons.Values)
+        {
+            neuron.Value = neuron.Bias; //= 0;
+        }
+
+        for (int i = 0; i < inputIds.Length && i < inputs.Length; i++)
+        {
+            Neurons[inputIds[i]].Value = inputs[i];
+        }
+
+        for (int i = 0; i < Connections.Count; i++)
+        {
+            conn = Connections[i];
+            if (!conn.Enabled) continue;
+
+            fromNeuron =  Neurons[conn.From];
+            toNeuron = Neurons[conn.To];
+            toNeuron.Value += fromNeuron.Value * conn.Weight;
+        }
+        
+
+       float[] outputs = new float[outputIds.Length];
+        for (int i = 0; i < outputIds.Length; i++)
+        {
+            outputs[i] = Sigmoid(Neurons[outputIds[i]].Value);
+        }
+
+        return outputs;
+    }
+
+    float Sigmoid(float x) => (1.0f / (1.0f + Mathf.Exp(-x)));
+    float RandomWeight() => Random.Range(-1.0f, 1.0f);
+
+
+
+
+    public void CreateOffspringNetwork(NeatNN a, NeatNN b, float mutationChance, float mutationAmount){ //TODO: add controlds of mC mA
+        if(Random.value < 0.5f){
+            Clone(a);
+        } else {
+            Clone(b);
+        }
+        this.Mutate();
+    }
+
+
+   // public void CreateOffspringNetwork(NeatNN a, NeatNN b, float mutationChance, float mutationAmount){
+   /*     if(Random.value < 0.5f){
+            this.layers = a.copyLayers();
+        } else {
+            this.layers = b.copyLayers();
+        }
+        this.MutateNetwork(mutationChance, mutationAmount);*/
+  //  }
+
+}
