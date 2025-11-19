@@ -4,6 +4,9 @@ using UnityEngine;
 
 public class Seed : MonoBehaviour
 {
+
+    private bool initialized = false;
+
    PlantDNAstats statsMod;
 
    public float timeBeforeSprout;
@@ -27,10 +30,17 @@ public class Seed : MonoBehaviour
     void Start()
     {
         timeBeforeSprout = statsMod.seedGerminationTime;
-        InvokeRepeating("ReduceTimer", 1f, 1f);
+        //InvokeRepeating("ReduceTimer", 1f, 1f);
+        initialized = true;
     }
 
-    void ReduceTimer(){ //do optimization for plants first
+    public void DestroySeed(){
+        Destroy(this.gameObject);
+    }
+
+    public void ReduceTimer(){ //do optimization for plants first
+        if(!initialized)
+        return;
         timeBeforeSprout--;
         if(timeBeforeSprout <= 0){
             if(Physics2D.OverlapCircleAll(transform.position, 2f, plantMask).Length == 0)

@@ -40,8 +40,14 @@ public class PlantController : MonoBehaviour
             if(plant != null)
             plant.GetComponent<Plant>().DestroyWithFruits();
         }
+        foreach(var seed in seeds)
+        {
+            if(seed != null)
+            seed.GetComponent<Seed>().DestroySeed();
+        }
         population.Clear();
         updateQueue.Clear();
+        seedsUpdateQueue.Clear();
         seeds.Clear();
     }
 
@@ -80,7 +86,10 @@ public class PlantController : MonoBehaviour
 
     private float timer = 0f; //update timer
 
+    private float seedUpdateTimer = 1f;
+
     private int groupsToSplitInto = 15;
+
 
     private int groupSize;
 
@@ -88,11 +97,18 @@ public class PlantController : MonoBehaviour
 
     private const float conditionUpdateInterval = 0.5f;
 
+    //======================
+
+    private int seedGroupSize;
+
+    private int partOfSeedAmount = 0;
+
     void Update() //TODO: update like in animal controller
     {
         if(population.Count > 0){
 
             clearListsTimer -= Time.deltaTime;
+            seedUpdateTimer -= Time.deltaTime;
             timer += Time.deltaTime;
 
             if(clearListsTimer <= 0){ //this is pre-update
@@ -110,6 +126,14 @@ public class PlantController : MonoBehaviour
 //                Debug.Log("UPDATING, GROUP SIZE" + groupSize);
                 UpdatePlants();        
             }
+
+            if(seedUpdateTimer <= 0 || partOfSeedAmount > 0){
+
+                seedGroupSize = seedsUpdateQueue.Count / groupsToSplitInto + 1;
+                seedUpdateTimer = 1f;
+
+                UpdateSeeds();
+            }
         }
     }
 
@@ -117,10 +141,34 @@ public class PlantController : MonoBehaviour
         population.RemoveAll(s => s == null);
         updateQueue.RemoveAll(s => s == null);
         seeds.RemoveAll(s => s == null);
+        seedsUpdateQueue.RemoveAll(s => s == null);
     }
 
 
     private List<GameObject> updateQueue = new List<GameObject>();
+    private List<GameObject> seedsUpdateQueue = new List<GameObject>();
+    void UpdateSeeds()
+    {
+
+        for(int i =  partOfSeedAmount * seedGroupSize; i < (partOfSeedAmount + 1) * seedGroupSize && i < seedsUpdateQueue.Count; i++)
+        {
+            //if(updateQueue[i] != null)
+            //updateQueue[i].GetComponent<Animal>().CheckStatsAndNeedsNN();
+
+            //here plants logic
+            if(seedsUpdateQueue[i] != null) //don'r forget
+            seedsUpdateQueue[i].GetComponent<Seed>().ReduceTimer();
+
+        }
+
+        if((partOfSeedAmount + 1) * seedGroupSize >= seedsUpdateQueue.Count)
+        {
+            partOfSeedAmount = 0;
+        } else {
+            partOfSeedAmount += 1;
+        }
+
+    }
 
 
     void UpdatePlants()
@@ -168,6 +216,7 @@ public class PlantController : MonoBehaviour
         seed.GetComponent<PlantDNAstats>().CreateOffspringTraits(a, b, mutationRate, maxMutationIntensity, percentOfIntenseMutations);
 
         seeds.Add(seed);
+        seedsUpdateQueue.Add(seed);
     }
 
 

@@ -26,6 +26,8 @@ public class CameraController2D : MonoBehaviour
 
     private bool inMenu = true;
 
+    private Transform target;
+
     void Awake()
     {
         if(environmentController == null)
@@ -44,9 +46,17 @@ public class CameraController2D : MonoBehaviour
     void Update()
     {
         if(!inMenu){
-            HandleZoom();
-            HandleMovement();
-            HandleMouseDrag();
+            HandleSelection();
+
+            if(target == null)
+            {
+                HandleZoom();
+                HandleMovement();
+                HandleMouseDrag();
+            } else {
+                FollowTarget();
+                HandleDeselection();
+            }
         }
     }
 
@@ -124,4 +134,58 @@ public class CameraController2D : MonoBehaviour
             transform.position.z);
     }
     }
+
+
+    private void HandleSelection()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+            RaycastHit2D hit = Physics2D.Raycast(ray.origin, ray.direction);
+
+            if (hit.collider != null)
+            {
+                Animal animal = hit.collider.GetComponent<Animal>();
+
+                if (animal != null)
+                {
+                    target = animal.transform;
+
+                    cam.orthographicSize = minZoom;
+
+                    return;
+                }
+            }
+
+        }
+    }
+
+
+    private void HandleDeselection()
+    {
+        if (Input.GetMouseButtonDown(1))
+        {
+            target = null;
+        }
+    }
+
+    private void FollowTarget()
+    {
+        if (target == null) return;
+
+        Vector3 targetPos = new Vector3(target.position.x, target.position.y, transform.position.z);
+
+        //less "jumps" during following
+        transform.position = Vector3.Lerp(
+            transform.position,
+            targetPos,
+            Time.deltaTime * 5f
+        );
+
+        //limit via wordborders
+        ClampCameraPosition();
+    }
+
+
+
 }
